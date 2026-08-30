@@ -4,7 +4,8 @@
 # Ref: https://github.com/lycheeverse/lychee/blob/master/lychee.example.toml
 
 # Verify #fragment/anchor targets resolve, not just the file path ("full"
-# checks both anchor and text fragments).
+# checks both anchor and text fragments). String values require lychee >= 0.24.0
+# (earlier releases accept only a boolean and fail to parse this config).
 include_fragments = "full"
 
 # A 429 is the SERVER rate-limiting the checker, never evidence the link is
@@ -23,15 +24,20 @@ accept = ["100..=103", "200..=299", "429"]
 # Build/dependency trees — not authored content. Values are regex (single-quoted
 # TOML literals, so backslashes are not double-escaped).
 exclude_path = [
-  'node_modules',
-  '\.venv',
+  '(^|/)node_modules/',
+  '(^|/)\.venv/',
   '(^|/)bin/',
   '(^|/)obj/',
 ]
 
+# Loopback targets ([::1] included) are checker-side noise, not links to verify.
+exclude_loopback = true
+
 # URL excludes for the online lane (the offline lane skips URLs entirely):
-# exact bot-blocked URLs, auth-walled private repos, loopback, placeholders, and
-# hosts the checker cannot complete a TLS handshake against. Every entry is a
+# exact bot-blocked URLs, auth-walled private repos, and hosts the checker
+# cannot complete a TLS handshake against. Loopback is handled by
+# exclude_loopback above, and RFC 2606 example domains (example.com/org/net)
+# are excluded by lychee natively — neither needs an entry. Every entry is a
 # CHECKER-side limitation on a link verified to be alive — never a dead link
 # silenced. Each one below records the verification that earned it, so a future
 # reader can re-test rather than trust the list.
@@ -56,10 +62,10 @@ exclude = [
   # trust store failing to complete an ECC chain, not an untrustworthy host.
   # Re-test before removing; a genuinely bad chain would fail locally too.
   '^https?://www\.ntia\.gov/files/ntia/publications/sbom_minimum_elements_report\.pdf$',
-  '^https?://(www\.)?x\.com/',
-  '^https?://twitter\.com/',
-  '^https?://(www\.)?linkedin\.com/',
-  '^https?://bsky\.app/',
+  '^https?://(www\.)?x\.com([/#?]|$)',
+  '^https?://twitter\.com([/#?]|$)',
+  '^https?://(www\.)?linkedin\.com([/#?]|$)',
+  '^https?://bsky\.app([/#?]|$)',
   '^https?://(www\.)?medium\.com/@ziobrando/the-rise-and-fall-of-the-dungeon-master-c2d511eed12f/?([?#].*)?$',
   '^https?://(www\.)?medium\.com/fortmatic/postmortem-service-disruption-from-expired-ssl-certificate-a993a59272a0/?([?#].*)?$',
   '^https?://dev\.mysql\.com/doc/refman/8\.4/en/innodb-transaction-isolation-levels\.html/?([?#].*)?$',
@@ -67,9 +73,6 @@ exclude = [
   '^https?://isdown\.app/status/anthropic/?([?#].*)?$',
   '^https?://(www\.)?npmjs\.com/package/(firecrawl-cli|@mirohq/miro-api)/?([?#].*)?$',
   '^https?://www\.w3\.org/International/wiki/WorkingWithTimeZones/?([?#].*)?$',
-  '^https?://localhost',
-  '^https?://127\.0\.0\.1',
-  '^https?://example\.(com|org)',
   # PRIVATE GitHub repos: valid links for authenticated collaborators, but the
   # online lane's credential is the calling repo's GITHUB_TOKEN (or nothing
   # locally), which cannot read any other private repo, so GitHub answers 404.

@@ -2,8 +2,8 @@ root = true
 
 # Language/framework-agnostic base. Covers universal defaults plus per-type
 # sections for the file classes that appear across the platform: Markdown, shell,
-# PowerShell, config/serialization (JSON/YAML/TOML), JS/TS, Go, Windows batch, git
-# config, and lockfiles. A repository may add a deeper project-local
+# config/serialization (JSON/YAML/TOML), JS/TS, Go, Windows batch, git config,
+# and lockfiles. A repository may add a deeper project-local
 # `.editorconfig` for narrower source sections; analyzer components do not
 # duplicate these universal text defaults.
 #
@@ -30,8 +30,7 @@ indent_size = 2
 
 # JavaScript / TypeScript — 2-space, matching the shared Biome formatter policy
 # (the single owner of JS/TS formatting). IndentSize is disabled in the checker,
-# so this is an
-# editor hint that keeps editors aligned with Biome.
+# so this is an editor hint that keeps editors aligned with Biome.
 [*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}]
 indent_size = 2
 

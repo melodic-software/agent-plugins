@@ -18,10 +18,11 @@ extend-ignore-re = [
   "(?s)(#|//)\\s*spellchecker:off.*?\\n\\s*(#|//)\\s*spellchecker:on",
   # Markdown / HTML comment form of the block directive — invisible in render.
   "(?s)<!--\\s*spellchecker:off\\s*-->.*?<!--\\s*spellchecker:on\\s*-->",
-  # Braced GUID / UUID literals — typos skips uniform-case UUIDs natively, but
-  # a mixed-case one trips the word splitter on its hex segments (e.g. `Ba54`
-  # splits to `Ba` -> "By"). Matches the canonical 8-4-4-4-12 brace form.
-  "\\{[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\}",
+  # GUID / UUID literals — typos skips uniform-case UUIDs natively, but a
+  # mixed-case one trips the word splitter on its hex segments (e.g. `Ba54`
+  # splits to `Ba` -> "By"). Matches the canonical 8-4-4-4-12 form, braced
+  # (registry-style) or bare.
+  "\\{?[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\}?",
 ]
 
 # Domain words / proper nouns (case-insensitive, [default.extend-words]) and
