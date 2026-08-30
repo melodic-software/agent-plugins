@@ -37,17 +37,21 @@ set -euo pipefail
 repo_root="${CLAUDE_PROJECT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
 cd -- "$repo_root"
 
+# Shared stderr logger — stdout is reserved for hook output (see the tail of
+# this file).
+log() { printf 'cloud-bootstrap: %s\n' "$*" >&2; }
+
 # Environment-snapshot inventory line: the shared environment's setup script
 # writes its version + build time to this stamp as its last action, falling
 # back to /tmp when /opt is unwritable at cache build. Logging it from every
 # session makes "which snapshot is this account booting" visible without a
 # per-account audit.
 if [[ -f /opt/melodic-env-setup.done ]]; then
-  echo "cloud-bootstrap: env snapshot $(cat /opt/melodic-env-setup.done)" >&2
+  log "env snapshot $(</opt/melodic-env-setup.done)"
 elif [[ -f /tmp/melodic-env-setup.done ]]; then
-  echo "cloud-bootstrap: env snapshot $(cat /tmp/melodic-env-setup.done) (fallback stamp; /opt was unwritable at cache build)" >&2
+  log "env snapshot $(</tmp/melodic-env-setup.done) (fallback stamp; /opt was unwritable at cache build)"
 else
-  echo "cloud-bootstrap: no env setup stamp (unmanaged environment or interrupted cache build)" >&2
+  log "no env setup stamp (unmanaged environment or interrupted cache build)"
 fi
 
 # --- Repo toolchain ---------------------------------------------------------
@@ -68,8 +72,6 @@ fi
 (
   set +e
 
-  toolchain_warn() { printf 'cloud-bootstrap: %s\n' "$*" >&2; }
-
   # env_line <export-line> — append to the session env file once. Dedup-guarded
   # because SessionStart fires again on resume.
   env_line() {
@@ -88,17 +90,16 @@ fi
         . "$NVM_DIR/nvm.sh"
         if nvm install "$node_pin" >/dev/null 2>&1; then
           nvm alias default "$node_pin" >/dev/null 2>&1 ||
-            toolchain_warn "Node $node_pin installed but could not be aliased default"
+            log "Node $node_pin installed but could not be aliased default"
         else
-          toolchain_warn "Node $node_pin install failed; continuing on $(node --version 2>/dev/null || echo 'no node')"
+          log "Node $node_pin install failed; continuing on $(node --version 2>/dev/null || echo 'no node')"
         fi
         set -u
       else
-        toolchain_warn "nvm not found at $NVM_DIR; Node $node_pin unavailable"
+        log "nvm not found at $NVM_DIR; Node $node_pin unavailable"
       fi
     fi
-    if node_bin="$(command -v node 2>/dev/null)"; then
-      # shellcheck disable=SC2016
+    if node_bin="$(command -v node)"; then
       env_line "export PATH=\"$(dirname -- "$node_bin"):$PWD/node_modules/.bin:\$PATH\""
     fi
   fi
@@ -110,7 +111,7 @@ fi
     if [[ ! -f node_modules/.package-lock.json ]] ||
       [[ package-lock.json -nt node_modules/.package-lock.json ]]; then
       npm ci --no-audit --no-fund >/dev/null 2>&1 ||
-        toolchain_warn 'npm ci failed; node_modules is unavailable this session'
+        log 'npm ci failed; node_modules is unavailable this session'
     fi
   fi
 
@@ -128,18 +129,16 @@ fi
         # builds.dotnet.microsoft.com) to HTTPS end to end.
         if curl -fsSL --proto '=https' --proto-redir '=https' \
           --retry 2 --retry-delay 3 https://dot.net/v1/dotnet-install.sh -o "$installer" 2>/dev/null &&
-          [[ -s "$installer" ]] &&
           head -c 2 "$installer" 2>/dev/null | grep -q '^#!' &&
           bash "$installer" --version "$sdk" --install-dir .dotnet >/dev/null 2>&1; then
           :
         else
-          toolchain_warn "dotnet $sdk install failed — check the environment's network allowlist (dot.net, aka.ms, builds.dotnet.microsoft.com, download.visualstudio.microsoft.com)"
+          log "dotnet $sdk install failed — check the environment's network allowlist (dot.net, aka.ms, builds.dotnet.microsoft.com, download.visualstudio.microsoft.com)"
         fi
         rm -f "$installer"
       fi
       if [[ -x .dotnet/dotnet ]]; then
         env_line "export DOTNET_ROOT=\"$PWD/.dotnet\""
-        # shellcheck disable=SC2016
         env_line "export PATH=\"$PWD/.dotnet:\$PATH\""
       fi
     fi
@@ -153,10 +152,10 @@ fi
   git_dir="$(git rev-parse --git-dir 2>/dev/null)"
   if [[ -n "$git_dir" && -f "$git_dir/shallow" ]]; then
     git fetch --quiet --unshallow 2>/dev/null ||
-      toolchain_warn 'could not unshallow; base-ref diffs may fail'
+      log 'could not unshallow; base-ref diffs may fail'
   fi
   git fetch --quiet origin "+main:refs/remotes/origin/main" 2>/dev/null ||
-    toolchain_warn 'could not fetch origin/main'
+    log 'could not fetch origin/main'
 
   # --- Repo extension (enrich seam) -----------------------------------------
   # A repo appends its own setup — extra lockfiles, pinned hygiene binaries,
@@ -169,9 +168,9 @@ fi
   # the session.
   if [[ -f .claude/cloud-bootstrap.local.sh ]]; then
     if bash .claude/cloud-bootstrap.local.sh >&2; then
-      toolchain_warn 'local extension completed'
+      log 'local extension completed'
     else
-      toolchain_warn 'WARN local extension failed'
+      log 'WARN local extension failed'
     fi
   fi
 
@@ -201,11 +200,11 @@ while IFS=$'\t' read -r mp_name mp_target; do
   [[ -n "$mp_name" ]] || continue
   if [[ $'\n'"$registered"$'\n' == *$'\n'"$mp_name"$'\n'* ]]; then continue; fi
   if [[ -z "$mp_target" ]]; then
-    echo "cloud-bootstrap: marketplace $mp_name declares no repo/path/url source; skipped" >&2
+    log "marketplace $mp_name declares no repo/path/url source; skipped"
   elif claude plugin marketplace add "$mp_target" --scope user >/dev/null 2>&1; then
-    echo "cloud-bootstrap: marketplace $mp_name registered ($mp_target)" >&2
+    log "marketplace $mp_name registered ($mp_target)"
   else
-    echo "cloud-bootstrap: WARN marketplace add failed: $mp_name ($mp_target)" >&2
+    log "WARN marketplace add failed: $mp_name ($mp_target)"
   fi
 done <<EOF
 $declared
@@ -226,13 +225,13 @@ while IFS= read -r id; do
   if claude plugin install "$id" --scope user -y >/dev/null 2>&1; then
     installed=$((installed + 1))
   else
-    echo "cloud-bootstrap: install failed: $id" >&2
+    log "install failed: $id"
   fi
 done <<EOF
 $wanted
 EOF
 
-echo "cloud-bootstrap: $enabled enabled, $installed newly installed" >&2
+log "$enabled enabled, $installed newly installed"
 
 # Catalog inventory line. Everything above installs strictly what the repo
 # declares, so a plugin added to a marketplace after this settings.json was
@@ -245,7 +244,8 @@ echo "cloud-bootstrap: $enabled enabled, $installed newly installed" >&2
 registered_dirs=$(claude plugin marketplace list --json 2>/dev/null |
   jq -r '.[] | select((.installLocation // "") != "")
     | [.name, .installLocation] | @tsv' 2>/dev/null || true)
-declared_mps=$(jq -r '(.extraKnownMarketplaces // {}) | keys[]' "$settings" 2>/dev/null || true)
+# Column 1 of $declared, already parsed above — no second jq pass needed.
+declared_mps=$(printf '%s\n' "$declared" | cut -f1)
 while IFS=$'\t' read -r mp_name mp_dir; do
   [[ -n "$mp_name" ]] || continue
   # That listing is machine-global while this question is repo-scoped: the
@@ -262,12 +262,12 @@ while IFS=$'\t' read -r mp_name mp_dir; do
   # the name is interpolated text, and sub() would read any regex
   # metacharacter in it as syntax.
   missing=$(jq -r --arg mp "$mp_name" --slurpfile s "$settings" '
-    [.plugins[]?.name] as $names
+    [.plugins[]?.name | strings] as $names
     | [$s[0].enabledPlugins // {} | to_entries[] | select(.value == true) | .key
        | select(endswith("@" + $mp)) | .[:length - ($mp | length) - 1]] as $declared
     | ($names - $declared) | join(", ")' "$catalog" 2>/dev/null || true)
   if [[ -n "$missing" ]]; then
-    echo "cloud-bootstrap: $mp_name carries plugins this repo does not declare: $missing" >&2
+    log "$mp_name carries plugins this repo does not declare: $missing"
   fi
 done <<EOF
 $registered_dirs
