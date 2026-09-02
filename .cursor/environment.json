@@ -1,0 +1,4 @@
+{
+  "name": "agent-plugins",
+  "install": "bash .cursor/install.sh"
+}
