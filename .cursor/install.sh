@@ -24,6 +24,9 @@ set -euo pipefail
 # Pinned versions. markdownlint-cli2 0.23.2 matches the schema pinned in
 # .markdownlint-cli2.jsonc, keeping authoring-time and runtime rules aligned.
 MARKDOWNLINT_CLI2_VERSION="0.23.2"
+# NOTE: the editorconfig-checker v3.11.2 release binary self-reports "v3.11.1"
+# (an upstream version-embedding quirk); `editorconfig-checker --version`
+# printing v3.11.1 is expected and does not mean the wrong binary was installed.
 EDITORCONFIG_CHECKER_VERSION="v3.11.2"
 TYPOS_VERSION="v1.50.1"
 LYCHEE_VERSION="v0.24.2"
