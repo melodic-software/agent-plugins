@@ -1,0 +1,64 @@
+name: ci
+
+# Consumer-side gate for the org ci-gate ruleset: `ci-status` is one of the four
+# required contexts, and it is only meaningful when it aggregates real lanes.
+# This repository has no build and no package manager, so the lanes are the
+# checkable content it does carry: the two shell scripts and the two JSON
+# manifests. The root config files synced from melodic-software/standards are
+# validated by their own tooling upstream and are deliberately not re-linted
+# here.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  merge_group:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  scripts:
+    name: Scripts and manifests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # shellcheck and jq are preinstalled on the ubuntu-24.04 image, so neither
+      # lane below needs an install step.
+      - name: shellcheck (must be zero findings)
+        run: shellcheck .claude/cloud-bootstrap.sh .cursor/install.sh
+      - name: bash -n (syntax floor)
+        run: |
+          for f in .claude/cloud-bootstrap.sh .cursor/install.sh; do
+            bash -n "$f"
+          done
+      - name: Manifests are well-formed JSON
+        run: |
+          jq empty .claude/settings.json
+          jq empty .cursor/environment.json
+
+  ci-status:
+    needs: [scripts]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Aggregate lane results
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          for result in $RESULTS; do
+            case "$result" in
+              success) ;;
+              *) echo "A required lane did not pass (result: $result)."; exit 1 ;;
+            esac
+          done
+          echo "All required lanes passed."

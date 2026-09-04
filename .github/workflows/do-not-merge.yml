@@ -1,0 +1,25 @@
+name: do-not-merge
+
+# Metadata-only caller for the organization-required blocking-label gate.
+# pull_request_target uses the protected base-branch definition; the reusable
+# reads current PR labels and does not execute PR-head code.
+on:
+  # zizmor: ignore[dangerous-triggers] metadata-only gate; rationale above
+  pull_request_target:
+    types: [opened, reopened, synchronize, labeled, unlabeled]
+  merge_group:
+
+permissions:
+  pull-requests: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  do-not-merge:
+    permissions:
+      pull-requests: read
+    uses: melodic-software/ci-workflows/.github/workflows/do-not-merge-gate.yml@c136b27f404dd32ce3873f39a6f3443891d1c16e # c136b27 2026-07-27 v0.9.1
+    with:
+      runner: ubuntu-24.04
