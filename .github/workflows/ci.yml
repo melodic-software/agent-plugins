@@ -12,18 +12,47 @@ on:
   push:
     branches: [main]
   pull_request:
+    # `edited`, `labeled` and `unlabeled` can change the pr-title /
+    # do-not-merge / issue-linkage answers without a new commit, so the required
+    # check has to re-evaluate. The set was implicit before (the
+    # `opened, synchronize, reopened` default) and is written out here. Whether
+    # such an event is CONTRACT-ONLY (lanes gated off, ci-status carrying the
+    # recorded `ci-lanes` verdict forward) is decided by one predicate, repeated
+    # verbatim in `cancel-in-progress` and in every job's `if:` except
+    # `ci-status`:
+    #
+    #   github.event.pull_request.head.repo.full_name == github.repository &&
+    #   (contains(fromJSON('["labeled","unlabeled"]'), github.event.action) ||
+    #    (github.event.action == 'edited' && !github.event.changes.base))
+    #
+    # An `edited` event carrying `changes.base` is a BASE-BRANCH change: the
+    # merge commit the lanes test changes with it, so that runs in full. A fork
+    # pull request is never contract-only — its token is read-only on
+    # `pull_request` whatever `permissions:` requests, so it cannot record lane
+    # state — and runs the full workflow on every event exactly as before. A
+    # `merge_group` event carries no pull request, so the predicate is false and
+    # the queue always runs in full.
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
   merge_group:
 
 permissions:
   contents: read
 
+# One group per pull request (the existing key is kept; the `run_id` fallback
+# keeps non-PR runs unique and never cancelled). A contract-only event never
+# cancels: it must queue behind an in-flight full run so the `ci-lanes` status
+# it reads is already written. GitHub keeps one running and one pending run per
+# group and the newest pending wins, so the carry-forward always executes after
+# the full run it depends on. A `synchronize` still cancels everything on the
+# old SHA.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && !(github.event.pull_request.head.repo.full_name == github.repository && (contains(fromJSON('["labeled","unlabeled"]'), github.event.action) || (github.event.action == 'edited' && !github.event.changes.base))) }}
 
 jobs:
   scripts:
     name: Scripts and manifests
+    if: ${{ !(github.event.pull_request.head.repo.full_name == github.repository && (contains(fromJSON('["labeled","unlabeled"]'), github.event.action) || (github.event.action == 'edited' && !github.event.changes.base))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -50,15 +79,29 @@ jobs:
     if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    permissions:
+      contents: read
+      # pr-contract upserts the advisory linkage comment and moves the linkage
+      # label; ci-status records the `ci-lanes` commit status the carry-forward
+      # branch reads back on the next contract-only event.
+      pull-requests: write
+      statuses: write
     steps:
+      - name: Check the pull-request contract
+        # A `push` or `merge_group` run carries no pull-request number, which
+        # makes this step a no-op reporting every output as `skipped`.
+        uses: melodic-software/ci-workflows/.github/actions/pr-contract@449157aaa8e30f7b1457305d8048ebe6168e174a # v0.20.0
+        with:
+          token: ${{ github.token }}
       - name: Aggregate lane results
-        env:
-          RESULTS: ${{ join(needs.*.result, ' ') }}
-        run: |
-          for result in $RESULTS; do
-            case "$result" in
-              success) ;;
-              *) echo "A required lane did not pass (result: $result)."; exit 1 ;;
-            esac
-          done
-          echo "All required lanes passed."
+        # `!cancelled()` so a failing pr-contract step does not skip the
+        # aggregation: the job still fails on the contract step's exit code, and
+        # the `ci-lanes` status is on the SHA for the next contract-only run.
+        if: ${{ !cancelled() }}
+        uses: melodic-software/ci-workflows/.github/actions/ci-status@449157aaa8e30f7b1457305d8048ebe6168e174a # v0.20.0
+        with:
+          results: ${{ join(needs.*.result, ' ') }}
+          # The replaced inline aggregator passed only `success`, so a `skipped`
+          # lane was already red here.
+          treat-skipped-as: fail
+          token: ${{ github.token }}
