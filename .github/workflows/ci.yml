@@ -39,15 +39,16 @@ permissions:
   contents: read
 
 # One group per pull request (the existing key is kept; the `run_id` fallback
-# keeps non-PR runs unique and never cancelled). A contract-only event never
-# cancels: it must queue behind an in-flight full run so the `ci-lanes` status
-# it reads is already written. GitHub keeps one running and one pending run per
-# group and the newest pending wins, so the carry-forward always executes after
-# the full run it depends on. A `synchronize` still cancels everything on the
-# old SHA.
+# keeps non-PR runs unique, so a push or merge-queue run is alone in its group
+# and there is never anything for it to cancel — no push-side guard is needed
+# here and none is written). A contract-only event never cancels: it must queue
+# behind an in-flight full run so the `ci-lanes` status it reads is already
+# written. GitHub keeps one running and one pending run per group and the newest
+# pending wins, so the carry-forward always executes after the full run it
+# depends on. A `synchronize` still cancels everything on the old SHA.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' && !(github.event.pull_request.head.repo.full_name == github.repository && (contains(fromJSON('["labeled","unlabeled"]'), github.event.action) || (github.event.action == 'edited' && !github.event.changes.base))) }}
+  cancel-in-progress: ${{ !(github.event.pull_request.head.repo.full_name == github.repository && (contains(fromJSON('["labeled","unlabeled"]'), github.event.action) || (github.event.action == 'edited' && !github.event.changes.base))) }}
 
 jobs:
   scripts:
