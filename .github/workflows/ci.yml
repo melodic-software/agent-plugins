@@ -18,7 +18,7 @@ on:
     # `opened, synchronize, reopened` default) and is written out here. Whether
     # such an event is CONTRACT-ONLY (lanes gated off, ci-status carrying the
     # recorded `ci-lanes` verdict forward) is decided by one predicate, repeated
-    # verbatim in `cancel-in-progress` and in every job's `if:` except
+    # verbatim in `concurrency.group` and in every job's `if:` except
     # `ci-status`:
     #
     #   github.event.pull_request.head.repo.full_name == github.repository &&
@@ -38,17 +38,45 @@ on:
 permissions:
   contents: read
 
-# One group per pull request (the existing key is kept; the `run_id` fallback
-# keeps non-PR runs unique, so a push or merge-queue run is alone in its group
-# and there is never anything for it to cancel — no push-side guard is needed
-# here and none is written). A contract-only event never cancels: it must queue
-# behind an in-flight full run so the `ci-lanes` status it reads is already
-# written. GitHub keeps one running and one pending run per group and the newest
-# pending wins, so the carry-forward always executes after the full run it
-# depends on. A `synchronize` still cancels everything on the old SHA.
+# The concurrency GROUP branches on the contract-only predicate (ci-perf Phase
+# 6b); `cancel-in-progress` is a plain `true` because it takes one value per
+# workflow and cannot branch.
+#
+# Contract-only branch: `ci-contract-<pr>-<run_id>`, unique per run. No
+# contract-only run can be cancelled, evict anything, or be evicted. That is
+# deliberate. Eviction of a *pending* run is unconditional in GitHub's queueing
+# ("any existing pending job or workflow in the same concurrency group will be
+# canceled") and is NOT governed by `cancel-in-progress`, so the old shared
+# group let one contract-only event evict another and leave a check suite on
+# the current head with no `ci-status` check run at all, a required check that
+# stops reporting until someone re-runs that specific run.
+#
+# Full branch: `<workflow>-<pr number || run_id>` with cancel-in-progress true,
+# so a `synchronize` still cancels the run it supersedes. Keying pull requests
+# on the number (not the head ref) keeps fork pull requests that share a branch
+# name from cancelling each other's required runs. The `run_id` fallback gives
+# every push and merge-queue run its own group, so there is never anything for
+# it to cancel and no push-side guard is needed here.
+#
+# The cost of the branch: a contract-only run no longer queues behind the full
+# run whose `ci-lanes` status it carries forward, so the two race. The
+# `ci-status` composite closes that with a bounded wait on EARLIER incomplete
+# runs on the same head SHA; see `carry-forward-wait-seconds` on the job below.
+#
+# One hazard the branch does not remove, because no concurrency setting both
+# removes it and keeps supersession: the full branch is keyed on the pull
+# request number, which does not vary with the head SHA, so re-running a STALE
+# run on a superseded head SHA lands in the CURRENT head's group and cancels
+# the run that is actually reporting. Re-run the run on the current head
+# instead. Contract-only runs are immune, being unique per `github.run_id`.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ !(github.event.pull_request.head.repo.full_name == github.repository && (contains(fromJSON('["labeled","unlabeled"]'), github.event.action) || (github.event.action == 'edited' && !github.event.changes.base))) }}
+  group: >-
+    ${{ (github.event.pull_request.head.repo.full_name == github.repository &&
+    (contains(fromJSON('["labeled","unlabeled"]'), github.event.action) ||
+    (github.event.action == 'edited' && !github.event.changes.base)))
+    && format('ci-contract-{0}-{1}', github.event.pull_request.number, github.run_id)
+    || format('{0}-{1}', github.workflow, github.event.pull_request.number || github.run_id) }}
+  cancel-in-progress: true
 
 jobs:
   scripts:
@@ -87,11 +115,16 @@ jobs:
       # branch reads back on the next contract-only event.
       pull-requests: write
       statuses: write
+      # The carry-forward wait enumerates this workflow's runs on this head SHA.
+      # Under an explicit `permissions:` block every unlisted scope defaults to
+      # none, so without this the Actions reads 403; the composite then warns
+      # naming the scope and fails, it never passes.
+      actions: read
     steps:
       - name: Check the pull-request contract
         # A `push` or `merge_group` run carries no pull-request number, which
         # makes this step a no-op reporting every output as `skipped`.
-        uses: melodic-software/ci-workflows/.github/actions/pr-contract@449157aaa8e30f7b1457305d8048ebe6168e174a # v0.20.0
+        uses: melodic-software/ci-workflows/.github/actions/pr-contract@906ae7ef379ea4d2b8497f64475dce1d3d8715c4 # v0.22.0
         with:
           token: ${{ github.token }}
       - name: Aggregate lane results
@@ -99,8 +132,12 @@ jobs:
         # aggregation: the job still fails on the contract step's exit code, and
         # the `ci-lanes` status is on the SHA for the next contract-only run.
         if: ${{ !cancelled() }}
-        uses: melodic-software/ci-workflows/.github/actions/ci-status@449157aaa8e30f7b1457305d8048ebe6168e174a # v0.20.0
+        uses: melodic-software/ci-workflows/.github/actions/ci-status@906ae7ef379ea4d2b8497f64475dce1d3d8715c4 # v0.22.0
         with:
+          # At least 60 seconds below this job's `timeout-minutes: 5` (300s), so
+          # the fail-closed error is what a contract-only run reports at the
+          # ceiling rather than a job timeout preempting it.
+          carry-forward-wait-seconds: '240'
           results: ${{ join(needs.*.result, ' ') }}
           # The replaced inline aggregator passed only `success`, so a `skipped`
           # lane was already red here.
