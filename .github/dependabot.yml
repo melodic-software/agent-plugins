@@ -22,9 +22,31 @@ updates:
     # Dependabot's own pull requests passing the required check.
     commit-message:
       prefix: build
+    # Delay version bumps so a compromised or yanked release is caught before
+    # this repository adopts it; security updates bypass the cooldown. Same
+    # posture and same window as melodic-software/ci-workflows.
+    cooldown:
+      default-days: 7
     # One pull request for every action bump, so a ci-workflows tag lands as a
     # single review rather than one pull request per pinned reference.
     groups:
       github-actions:
         patterns:
           - '*'
+    # `.github/workflows/managed-files-guard.yml` is a sync-managed destination
+    # (source of truth: melodic-software/standards,
+    # components/managed-files-guard). Its ci-workflows pin moves upstream
+    # through the claude-lanes-repin cascade and a downstream edit is both
+    # caught by the guard itself and overwritten by the next sync pull request,
+    # so Dependabot must not touch it. This is the only ci-workflows reference
+    # that lives solely in a managed file; `pr-contract` and `ci-status` are
+    # locally owned in `ci.yml` and stay Dependabot-managed, which is the point
+    # of this configuration.
+    #
+    # `actions/checkout` is pinned in both `ci.yml` and the managed guard at the
+    # same SHA, and Dependabot's ignore list cannot be scoped to a file, so a
+    # checkout bump still edits the managed copy. That overlap is fleet-wide and
+    # pre-existing (no sibling repository ignores `actions/checkout` either);
+    # the guard is advisory here and the standards sync reconciles it.
+    ignore:
+      - dependency-name: "melodic-software/ci-workflows/.github/actions/managed-files-guard"
