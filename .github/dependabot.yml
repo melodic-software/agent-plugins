@@ -1,0 +1,30 @@
+version: 2
+
+# This repository carries no build and no package manager, so the only
+# ecosystem with a manifest here is `github-actions`: the SHA-pinned `uses:`
+# refs in `.github/workflows/**`. Keeping them under Dependabot is what makes
+# the next melodic-software/ci-workflows tag arrive as one reviewable pull
+# request instead of a hand sweep (ci-perf Phase 6b-i).
+#
+# `directory: /` scans `.github/workflows`. There is no `.github/actions/`
+# here, so no glob target is needed; add one if composite actions land.
+#
+# Review every pull request before merge and never auto-merge: an action SHA
+# bump is executable CI logic.
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels: ["dependencies"]
+    # `ci-status` fails a pull-request title that is not Conventional Commits,
+    # and `build` is in the accepted type list, so the prefix is what keeps
+    # Dependabot's own pull requests passing the required check.
+    commit-message:
+      prefix: build
+    # One pull request for every action bump, so a ci-workflows tag lands as a
+    # single review rather than one pull request per pinned reference.
+    groups:
+      github-actions:
+        patterns:
+          - '*'
