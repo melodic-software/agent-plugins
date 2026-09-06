@@ -132,7 +132,7 @@ jobs:
         # aggregation: the job still fails on the contract step's exit code, and
         # the `ci-lanes` status is on the SHA for the next contract-only run.
         if: ${{ !cancelled() }}
-        uses: melodic-software/ci-workflows/.github/actions/ci-status@906ae7ef379ea4d2b8497f64475dce1d3d8715c4 # v0.22.0
+        uses: melodic-software/ci-workflows/.github/actions/ci-status@5776760254f8b63cba44e896f51604cb755350d9 # v0.22.2
         with:
           # At least 60 seconds below this job's `timeout-minutes: 5` (300s), so
           # the fail-closed error is what a contract-only run reports at the
