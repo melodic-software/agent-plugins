@@ -124,7 +124,7 @@ jobs:
       - name: Check the pull-request contract
         # A `push` or `merge_group` run carries no pull-request number, which
         # makes this step a no-op reporting every output as `skipped`.
-        uses: melodic-software/ci-workflows/.github/actions/pr-contract@ac062650c46005edb4787aff378347746bf63804 # v0.27.0
+        uses: melodic-software/ci-workflows/.github/actions/pr-contract@4610c31e92eb1c4b24981e2f200ac87bdb2a1753 # v0.27.1
         with:
           token: ${{ github.token }}
       - name: Aggregate lane results
@@ -132,7 +132,7 @@ jobs:
         # aggregation: the job still fails on the contract step's exit code, and
         # the `ci-lanes` status is on the SHA for the next contract-only run.
         if: ${{ !cancelled() }}
-        uses: melodic-software/ci-workflows/.github/actions/ci-status@ac062650c46005edb4787aff378347746bf63804 # v0.27.0
+        uses: melodic-software/ci-workflows/.github/actions/ci-status@4610c31e92eb1c4b24981e2f200ac87bdb2a1753 # v0.27.1
         with:
           # At least 60 seconds below this job's `timeout-minutes: 5` (300s), so
           # the fail-closed error is what a contract-only run reports at the
