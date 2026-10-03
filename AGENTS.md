@@ -16,3 +16,9 @@ comment and the `needs-issue-linkage` label, not a red check. Draft the body
 to that shape before opening the pull request: this repository carries no
 local template and inherits the org default from
 [`melodic-software/.github`](https://github.com/melodic-software/.github/blob/main/.github/PULL_REQUEST_TEMPLATE.md).
+
+## Code Review Rules
+
+Each line names a rule CI does not enforce; the linked file states it in full.
+
+- Org-wide criteria: [`REVIEW.md`](https://github.com/melodic-software/standards/blob/main/REVIEW.md) in `melodic-software/standards`.
