@@ -38,10 +38,17 @@ updates:
     # components/managed-files-guard). Its ci-workflows pin moves upstream
     # through the claude-lanes-repin cascade and a downstream edit is both
     # caught by the guard itself and overwritten by the next sync pull request,
-    # so Dependabot must not touch it. This is the only ci-workflows reference
-    # that lives solely in a managed file; `pr-contract` and `ci-status` are
+    # so Dependabot must not touch it. This is the only composite-action ci-workflows reference
+    # that lives solely in that file; `pr-contract` and `ci-status` are
     # locally owned in `ci.yml` and stay Dependabot-managed, which is the point
     # of this configuration.
+    #
+    # `.github/workflows/claude-review-hosted.yml` and
+    # `.github/workflows/claude-security-review-hosted.yml` are sync-managed
+    # destinations too (source of truth: melodic-software/standards,
+    # components/claude-lanes-hosted). Each pins one ci-workflows reusable
+    # workflow that moves upstream through the same repin cascade, so both are
+    # ignored for the same reason.
     #
     # `actions/checkout` is pinned in both `ci.yml` and the managed guard at the
     # same SHA, and Dependabot's ignore list cannot be scoped to a file, so a
@@ -50,3 +57,5 @@ updates:
     # the guard is advisory here and the standards sync reconciles it.
     ignore:
       - dependency-name: "melodic-software/ci-workflows/.github/actions/managed-files-guard"
+      - dependency-name: "melodic-software/ci-workflows/.github/workflows/claude-review.yml"
+      - dependency-name: "melodic-software/ci-workflows/.github/workflows/claude-security-review.yml"
