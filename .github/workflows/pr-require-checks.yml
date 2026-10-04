@@ -1,4 +1,4 @@
-name: ci
+name: pr-require-checks
 
 # Consumer-side gate for the org ci-gate ruleset: `ci-status` is one of the four
 # required contexts, and it is only meaningful when it aggregates real lanes.
@@ -60,7 +60,7 @@ permissions:
 #
 # The cost of the branch: a contract-only run no longer queues behind the full
 # run whose `ci-lanes` status it carries forward, so the two race. The
-# `ci-status` composite closes that with a bounded wait on EARLIER incomplete
+# `aggregate-results` composite closes that with a bounded wait on EARLIER incomplete
 # runs on the same head SHA; see `carry-forward-wait-seconds` on the job below.
 #
 # One hazard the branch does not remove, because no concurrency setting both
@@ -79,7 +79,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  scripts:
+  check-scripts-and-manifests:
     name: Scripts and manifests
     if: ${{ !(github.event.pull_request.head.repo.full_name == github.repository && (contains(fromJSON('["labeled","unlabeled"]'), github.event.action) || (github.event.action == 'edited' && !github.event.changes.base))) }}
     runs-on: ubuntu-24.04
@@ -104,13 +104,13 @@ jobs:
           jq empty .cursor/environment.json
 
   ci-status:
-    needs: [scripts]
+    needs: [check-scripts-and-manifests]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
-      # pr-contract upserts the advisory linkage comment and moves the linkage
+      # check-contract upserts the advisory linkage comment and moves the linkage
       # label; ci-status records the `ci-lanes` commit status the carry-forward
       # branch reads back on the next contract-only event.
       pull-requests: write
@@ -124,15 +124,15 @@ jobs:
       - name: Check the pull-request contract
         # A `push` or `merge_group` run carries no pull-request number, which
         # makes this step a no-op reporting every output as `skipped`.
-        uses: melodic-software/ci-workflows/.github/actions/pr-contract@4610c31e92eb1c4b24981e2f200ac87bdb2a1753 # v0.27.1
+        uses: melodic-software/ci-workflows/.github/actions/pr-require-checks/check-contract@7446b5165511796b7b0d30b68d341689ebb8de61 # v0.34.0
         with:
           token: ${{ github.token }}
       - name: Aggregate lane results
-        # `!cancelled()` so a failing pr-contract step does not skip the
+        # `!cancelled()` so a failing check-contract step does not skip the
         # aggregation: the job still fails on the contract step's exit code, and
         # the `ci-lanes` status is on the SHA for the next contract-only run.
         if: ${{ !cancelled() }}
-        uses: melodic-software/ci-workflows/.github/actions/ci-status@4610c31e92eb1c4b24981e2f200ac87bdb2a1753 # v0.27.1
+        uses: melodic-software/ci-workflows/.github/actions/pr-require-checks/aggregate-results@7446b5165511796b7b0d30b68d341689ebb8de61 # v0.34.0
         with:
           # At least 60 seconds below this job's `timeout-minutes: 5` (300s), so
           # the fail-closed error is what a contract-only run reports at the
