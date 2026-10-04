@@ -2,15 +2,16 @@ version: 2
 
 # This repository carries no build and no package manager, so the only
 # ecosystem with a manifest here is `github-actions`: the SHA-pinned `uses:`
-# refs in `.github/workflows/**`. Keeping them under Dependabot is what makes
-# the next melodic-software/ci-workflows tag arrive as one reviewable pull
-# request instead of a hand sweep (ci-perf Phase 6b-i).
+# refs in `.github/workflows/**`.
 #
 # `directory: /` scans `.github/workflows`. There is no `.github/actions/`
 # here, so no glob target is needed; add one if composite actions land.
 #
-# Review every pull request before merge and never auto-merge: an action SHA
-# bump is executable CI logic.
+# Merge lanes follow the standards dependabot-policy component: the
+# `vendor-actions` group (non-major only) is the auto-merge lane armed by
+# pr-automerge-dependabot.yml; every other PR is reviewed by hand. A dependency
+# joins the first group that matches it, so majors fall through to the
+# reviewed `github-actions` group.
 updates:
   - package-ecosystem: github-actions
     directory: /
@@ -23,41 +24,21 @@ updates:
     commit-message:
       prefix: build
     # Delay version bumps so a compromised or yanked release is caught before
-    # this repository adopts it; security updates bypass the cooldown. Same
-    # posture and same window as melodic-software/ci-workflows.
+    # this repository adopts it; security updates bypass the cooldown.
     cooldown:
-      default-days: 7
-    # One pull request for every action bump, so a ci-workflows tag lands as a
-    # single review rather than one pull request per pinned reference.
+      default-days: 3
     groups:
+      vendor-actions:
+        patterns:
+          - actions/*
+          - github/*
+          - anthropics/*
+        update-types: [minor, patch]
       github-actions:
         patterns:
           - '*'
-    # `.github/workflows/managed-files-guard.yml` is a sync-managed destination
-    # (source of truth: melodic-software/standards,
-    # components/managed-files-guard). Its ci-workflows pin moves upstream
-    # through the claude-lanes-repin cascade and a downstream edit is both
-    # caught by the guard itself and overwritten by the next sync pull request,
-    # so Dependabot must not touch it. This is the only composite-action ci-workflows reference
-    # that lives solely in that file; `pr-contract` and `ci-status` are
-    # locally owned in `ci.yml` and stay Dependabot-managed, which is the point
-    # of this configuration.
-    #
-    # `.github/workflows/claude-review-hosted.yml` and
-    # `.github/workflows/claude-security-review-hosted.yml` are sync-managed
-    # destinations too (source of truth: melodic-software/standards,
-    # components/claude-lanes-hosted). Each pins one ci-workflows reusable
-    # workflow that moves upstream through the same repin cascade, so both are
-    # ignored for the same reason.
-    #
-    # `actions/checkout` is pinned in both `ci.yml` and the managed guard at the
-    # same SHA, and Dependabot's ignore list cannot be scoped to a file, so a
-    # checkout bump still edits the managed copy. That overlap is fleet-wide and
-    # pre-existing (no sibling repository ignores `actions/checkout` either);
-    # the guard is advisory here and the standards sync reconciles it.
+    # Every melodic-software/ci-workflows ref (reusable workflows AND composite
+    # actions) moves only through deliberate reviewed PRs per the standards
+    # runner-policy selector-revision lockstep, so all of them are ignored here.
     ignore:
-      - dependency-name: "melodic-software/ci-workflows/.github/actions/managed-files-guard"
-      - dependency-name: "melodic-software/ci-workflows/.github/workflows/claude-review.yml"
-      - dependency-name: "melodic-software/ci-workflows/.github/workflows/claude-security-review.yml"
-      # The GitHub Actions conventions rename migrates this repo's ci-workflows pins deliberately; remove this ignore at that migration.
       - dependency-name: "melodic-software/ci-workflows/*"
