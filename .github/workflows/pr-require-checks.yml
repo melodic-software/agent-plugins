@@ -144,7 +144,7 @@ jobs:
           # `success` it re-runs those red contract-only runs, which then read
           # the `success` and replace their red check runs.
           yield-to-full-run: 'true'
-          rerun-contract-only-siblings: 'true'
+          rerun-contract-only-siblings: ${{ github.event.pull_request.draft && 'false' || 'true' }}
           carry-forward-wait-seconds: '0'
           results: ${{ join(needs.*.result, ' ') }}
           # The replaced inline aggregator passed only `success`, so a `skipped`
