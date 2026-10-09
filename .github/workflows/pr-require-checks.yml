@@ -128,7 +128,7 @@ jobs:
       - name: Check the pull-request contract
         # A `push` or `merge_group` run carries no pull-request number, which
         # makes this step a no-op reporting every output as `skipped`.
-        uses: melodic-software/ci-workflows/.github/actions/pr-require-checks/check-contract@cf316d12b4a14fbdb96a339b7ad00ce935a8cad4 # v0.38.2
+        uses: melodic-software/ci-workflows/.github/actions/pr-require-checks/check-contract@ab83b01273026ab5c23c6f3b40e946d97a863fa2 # v0.39.3
         with:
           token: ${{ github.token }}
       - name: Aggregate lane results
@@ -136,7 +136,7 @@ jobs:
         # aggregation: the job still fails on the contract step's exit code, and
         # the `ci-lanes` status is on the SHA for the next contract-only run.
         if: ${{ !cancelled() }}
-        uses: melodic-software/ci-workflows/.github/actions/pr-require-checks/aggregate-results@cf316d12b4a14fbdb96a339b7ad00ce935a8cad4 # v0.38.2
+        uses: melodic-software/ci-workflows/.github/actions/pr-require-checks/aggregate-results@ab83b01273026ab5c23c6f3b40e946d97a863fa2 # v0.39.3
         with:
           # A contract-only run never waits: while a full run on the SHA is in
           # flight it fails with "superseded by full run <url>", and that run's
