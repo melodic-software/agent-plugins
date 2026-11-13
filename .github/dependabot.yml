@@ -18,7 +18,7 @@ updates:
     schedule:
       interval: weekly
     labels: ["dependencies"]
-    # `ci-status` fails a pull-request title that is not Conventional Commits,
+    # `CI Status` fails a pull-request title that is not Conventional Commits,
     # and `build` is in the accepted type list, so the prefix is what keeps
     # Dependabot's own pull requests passing the required check.
     commit-message:

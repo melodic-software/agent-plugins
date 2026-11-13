@@ -2,7 +2,7 @@
 
 ## Pull requests
 
-`ci-status` is the single required check. It fails on a title that is not
+`CI Status` is the single required check. It fails on a title that is not
 Conventional Commits (`build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`,
 `refactor`, `revert`, `security`, `style`, `test`) and on a `do-not-merge`
 label. Every body opens with a closing keyword and issue ("Closes #<issue>",
