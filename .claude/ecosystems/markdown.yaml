@@ -1,0 +1,18 @@
+# Markdown in this repository: README.md, AGENTS.md, CLAUDE.md and the
+# standards-synced REVIEW.md. Contract and schema:
+# https://github.com/melodic-software/claude-code-plugins/tree/main/docs/contracts/ecosystem-commands
+# CI runs no markdown linter: .github/workflows/pr-require-checks.yml has no
+# markdownlint step (:84-170). Its offline link check runs from
+# cross-cutting.yaml. So this record runs no command.
+enabled: true
+globs: ["*.md"]
+project-discovery: []
+build-cmd: null
+test-cmd: null
+check-cmd: null
+fix-cmd: null
+code-fix-cmd: null
+install-hint: "None: this record runs no command."
+tool-pin: {}
+gates: []
+notes: "No command because CI has none for markdown lint. Without this file the bundled markdown default (claude-code-plugins plugins/toolchain/reference/ecosystems/markdown.yaml:7-8) would run markdownlint-cli2 on changed *.md files, because its opt-in, a markdownlint config (:9), is met by .markdownlint-cli2.jsonc; that file is standards-synced (.github/workflows/pr-check-managed-files-hosted.yml:72) and CI deliberately does not re-lint with it (pr-require-checks.yml:6-10). The record is enabled: true with null commands rather than enabled: false: the repository holds markdown, null commands read as not applicable, and false would also drop the lane for code-metrics, which reads enabled (the ecosystem-commands contract README, Consumers). No opt-in key: there is no check-cmd for it to govern. CI's lychee job checks the links and anchors in these files (pr-require-checks.yml:108-121), and that check runs from cross-cutting.yaml."
