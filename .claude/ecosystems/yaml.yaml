@@ -1,0 +1,17 @@
+# GitHub Actions workflows and Dependabot config in this repository. Contract
+# and schema:
+# https://github.com/melodic-software/claude-code-plugins/tree/main/docs/contracts/ecosystem-commands
+# CI lints no workflow: .github/workflows/pr-require-checks.yml has no
+# actionlint, schema or zizmor step (:84-170). So this record runs no command.
+enabled: true
+globs: [".github/**/*.yml", ".github/**/*.yaml"]
+project-discovery: []
+build-cmd: null
+test-cmd: null
+check-cmd: null
+fix-cmd: null
+code-fix-cmd: null
+install-hint: "None: this record runs no command."
+tool-pin: {}
+gates: []
+notes: "No command because CI has none for workflow lint. Without this file the bundled yaml default (claude-code-plugins plugins/toolchain/reference/ecosystems/yaml.yaml:8-11) would run actionlint, because its opt-in, GitHub Actions workflows present (:13), is met. The record is enabled: true with null commands rather than enabled: false: the repository holds workflows, null commands read as not applicable, and false would also drop the lane for code-metrics, which reads enabled (the ecosystem-commands contract README, Consumers). No opt-in key: there is no check-cmd for it to govern. The workflows' checks with no local form are listed in cross-cutting.yaml's notes. These globs, the bundled default's, do not select lefthook.yml or docs/conventions/source-control/commit-convention.yml; CI lints neither, so no command is lost."
