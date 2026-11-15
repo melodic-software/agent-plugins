@@ -8,10 +8,11 @@ version: 2
 # here, so no glob target is needed; add one if composite actions land.
 #
 # Merge lanes follow the standards dependabot-policy component: the
-# `vendor-actions` group (non-major only) is the auto-merge lane armed by
-# pr-automerge-dependabot.yml; every other PR is reviewed by hand. A dependency
-# joins the first group that matches it, so majors fall through to the
-# reviewed `github-actions` group.
+# `first-party-actions` group (the melodic-software/ci-workflows composite
+# action pins) and the `vendor-actions` group (non-major only) are the
+# auto-merge lanes armed by pr-automerge-dependabot.yml; every other PR is
+# reviewed by hand. A dependency joins the first group that matches it, so
+# majors fall through to the reviewed `github-actions` group.
 updates:
   - package-ecosystem: github-actions
     directory: /
@@ -27,7 +28,16 @@ updates:
     # this repository adopts it; security updates bypass the cooldown.
     cooldown:
       default-days: 3
+      # First-party releases take no soak (the synced Dependabot policy's
+      # `fastTrack.own`).
+      exclude:
+        - "melodic-software/ci-workflows/*"
     groups:
+      # Every ci-workflows composite-action pin moves in one pull request, so
+      # the repository stays on one ci-workflows release.
+      first-party-actions:
+        patterns:
+          - "melodic-software/*"
       vendor-actions:
         patterns:
           - actions/*
@@ -37,8 +47,7 @@ updates:
       github-actions:
         patterns:
           - '*'
-    # Every melodic-software/ci-workflows ref (reusable workflows AND composite
-    # actions) moves only through deliberate reviewed PRs per the standards
-    # runner-policy selector-revision lockstep, so all of them are ignored here.
+    # The one first-party pin Dependabot leaves alone sits in the sync-managed
+    # pr-check-managed-files-hosted.yml, which the standards sync owns.
     ignore:
-      - dependency-name: "melodic-software/ci-workflows/*"
+      - dependency-name: "melodic-software/ci-workflows/.github/actions/check-managed-files"
