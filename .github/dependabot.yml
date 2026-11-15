@@ -14,7 +14,7 @@ version: 2
 # reviewed by hand. A dependency joins the first group that matches it: a
 # vendor major falls through to the reviewed `github-actions` group, and a
 # first-party major stays in `first-party-actions`, where the lane does not arm
-# a pull request that holds a major bump, so a person merges it.
+# a pull request that holds a major bump, so it takes the review tier.
 updates:
   - package-ecosystem: github-actions
     directory: /
