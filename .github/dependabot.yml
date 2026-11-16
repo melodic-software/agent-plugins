@@ -19,7 +19,7 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: daily
     labels: ["dependencies"]
     # `CI Status` fails a pull-request title that is not Conventional Commits,
     # and `build` is in the accepted type list, so the prefix is what keeps
