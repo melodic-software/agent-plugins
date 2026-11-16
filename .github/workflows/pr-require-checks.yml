@@ -116,7 +116,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Check local links and anchors
-        uses: melodic-software/ci-workflows/.github/actions/lychee-offline@944d346c487c79eaf85dff752586fb59b0f5c539 # v0.74.0
+        uses: melodic-software/ci-workflows/.github/actions/lychee-offline@70a7fd774bd210e8e158bc1fdd308c07e4711a07 # v0.74.1
         with:
           config: lychee.toml
 
@@ -145,7 +145,7 @@ jobs:
       - name: Check the pull-request contract
         # A `push` or `merge_group` run carries no pull-request number, which
         # makes this step a no-op reporting every output as `skipped`.
-        uses: melodic-software/ci-workflows/.github/actions/pr-require-checks/check-contract@944d346c487c79eaf85dff752586fb59b0f5c539 # v0.74.0
+        uses: melodic-software/ci-workflows/.github/actions/pr-require-checks/check-contract@70a7fd774bd210e8e158bc1fdd308c07e4711a07 # v0.74.1
         with:
           token: ${{ github.token }}
       - name: Aggregate lane results
@@ -153,7 +153,7 @@ jobs:
         # aggregation: the job still fails on the contract step's exit code, and
         # the `ci-lanes` status is on the SHA for the next contract-only run.
         if: ${{ !cancelled() }}
-        uses: melodic-software/ci-workflows/.github/actions/pr-require-checks/aggregate-results@944d346c487c79eaf85dff752586fb59b0f5c539 # v0.74.0
+        uses: melodic-software/ci-workflows/.github/actions/pr-require-checks/aggregate-results@70a7fd774bd210e8e158bc1fdd308c07e4711a07 # v0.74.1
         with:
           # A contract-only run never waits: while a full run on the SHA is in
           # flight it fails with "superseded by full run <url>", and that run's
